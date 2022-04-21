@@ -1,0 +1,201 @@
+---
+title: "Stat Computing HW3"
+author: "Yaniv Bronshtein"
+date: "4/9/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Library imports**
+```{r}
+library(tidyverse)
+
+```
+# Problem 1. 
+(a) Generate 200 replicas of uniform [-pi,pi] and 200 normal with mean 0 and standard deviation 1/8. Set data x from this uniform, error epsilon from this normal distribution. The response y is by model:
+y = sin(x)+epsilon
+Fit the data with two types of smoothing techniques. Plot both the data and your fitted smooth curves. (b) The same as (a) except changing the standard deviation from 1/8 to 1/2.
+[Remark: Use a computer for you calculation; explain your analysis and results carefully]
+
+
+```{r}
+set.seed(1)
+x <- runif(n=200,min=-pi,max=pi)
+e1 <- rnorm(n=200,mean=0,sd=(1/8))
+y1 <- sin(x) + e1
+```
+
+```{r}
+set.seed(1)
+e2 <- rnorm(n=200,mean=0,sd=(1/2))
+y2 <- sin(x) + e2
+```
+**Fit the data with two smoothing techniques**
+```{r}
+par(mfrow=c(2,2))
+plot(x,y1,main="Loess for std=1/8")
+lines(loess.smooth(x,y1),lwd=2,col='red')
+
+plot(x,y1,main="Spline for std=1/8")
+lines(smooth.spline(x,y1),lwd=2,col='blue')
+
+plot(x,y2,main="Loess for std=1/2")
+lines(loess.smooth(x,y2),lwd=2,col='red')
+
+plot(x,y2,main="Spline for std=1/2")
+lines(smooth.spline(x,y2),lwd=2,col='blue')
+
+```
+The above graphs show that the four graphs show a fit to the non-linear data using both a smoothing method and a kernal method. These are two of the more popular fitting tool with two graphs using standard deviation of 1/2 and 1/8 for each method. The fit is similiar for the two standard deviations but we see that the lower standard deviation is slightly less smooth and the higher std.dev is more smooth.
+
+*Based on the results, a spline fitting the data for error standard deviation of 1/8 provides the best fit.*
+*Loess provides the poorest fit for both values of standard deviation.*
+*Despite the difficulty of fitting for std=1/2, the spline consistently performs the better fit for both standard deviations*
+
+# Problem 2. 
+(a) Use a linear regression model to analyze the GAG in urine data in data frame GAGurine. Produce a chart to help a pediatrician to assess if a child’s GAG concentration is ‘normal or not (hint: plot in one graph the estimated line and confidence bands at different levels)
+(b) Consider using a smooth regression to analyze the GAG in urine data
+[Remark: See the data set named “GAGurine.csv” in the assignment. Use a computer for you calculation; explain your analysis and results carefully]
+
+**Read in the data**
+```{r}
+gag_urine_df <- read.csv('/Users/yanivbronshtein/Coding/Rutgers/Statistical_Computing_Repo/data/GAGurine.csv')
+```
+
+**Fit linear regression model**
+```{r}
+gag_lm <- lm(GAG~Age, data=gag_urine_df)
+summary(gag_lm)
+```
+**Generate the physician growth chart
+```{r}
+GAG_plot <- ggplot(gag_urine_df, aes(Age, GAG)) + 
+    geom_smooth(method = "lm", se = TRUE, col = "black") +
+    geom_point(size = 1, col = "magenta") + 
+    labs(x = "Age (months)", y = "GAG") + 
+    ggtitle("Physician Growth chart") +
+    theme_light()
+    
+GAG_plot
+
+```
+*The physician chart above shows that the data is poorly fit with a linear model. Most of the observations are not on the regression curve.*
+**Fit the spline for the GAGURine data**
+```{r}
+x <- gag_urine_df$Age
+y <- gag_urine_df$GAG
+plot(x=x, 
+     y=y, 
+     main="Spline smoothing for GAGUrine data",
+     xlab="Age",
+     ylab="GAG")
+lines(smooth.spline(x,y),lwd=2,col='blue')
+```
+
+
+# Problem 4 
+Write a computing code to calculate the integration from -5 to 5 of (x^3 − x^2)exp{−x^2/2} using Monte Carlo simulation with N samples from a uniform distribution, for N = 10, 100, 1000. For each choice
+ of N, repeat the experiment for 500 times, compute the variance and visualize the relationship between the variance and N.
+[Remark: Use a computer for you calculation; explain your results carefully]
+
+```{r}
+# importing the modules
+
+  
+# limits of integration
+a = -5
+b = 5 
+N = 100
+  
+arr <- runif(N,a,b)
+
+  
+# variable to store sum of the functions of 
+# different values of x
+integral <- 0.0
+  
+# function to calculate the sin of a particular
+# value of x
+f <- function(x){
+  exponent <- -(x^2)/2
+  return((x^3 - x^2)*exp(exponent))
+}  
+# iterates and sums up values of different functions
+# of x
+for(elem in arr){
+    integral <- integral + f(elem)
+}
+cat(integral)
+# we get the answer by the formula derived adobe
+ans = 1.0*(b-a)/N*integral
+  
+# prints the solution
+cat("The value calculated by monte carlo integration is.",ans)
+
+
+```
+**Function to integrate**
+```{r}
+
+f <- function(x){
+    exponent <- -(x^2)/2
+    return((x^3 - x^2)*exp(exponent))
+}
+
+```
+
+**Monte Carlo integration**
+```{r}
+monte_carlo_integral <- function(N){
+  a <- -5
+  b <- 5
+  arr <- runif(N,a,b)
+
+  
+  # variable to store sum of the functions of 
+  # different values of x
+  integral <- 0.0
+    
+    
+  # iterates and sums up values of different functions
+  # of x
+  for(elem in arr){
+      integral <- integral + f(elem)
+  }  
+  # we get the answer by the formula derived adobe
+  ans = (b-a)/N*integral
+    
+  return(ans) 
+}
+```
+
+
+**Compute the variances after 500 simulations**
+```{r}
+
+arr_N10 <- NULL; arr_N100 <- NULL; arr_N1000 <- NULL 
+for(i in 1:500) {  
+  arr_N10 <- c(arr_N10, monte_carlo_integral(10))
+  arr_N100 <- c(arr_N100, monte_carlo_integral(100))
+  arr_N1000 <- c(arr_N1000, monte_carlo_integral(1000))
+
+}
+
+var_N10 <- var(arr_N10)
+var_N100 <- var(arr_N100)
+var_N1000 <- var(arr_N1000)
+ 
+```
+
+**Plot the variance**
+```{r}
+N <- c(10,100,1000)
+Variance <- c(var_N10, var_N100, var_N1000)
+
+plot(x=N, y=Variance, type='l')
+```
+
+Over 500 iterations, we compute the variance estimates and utilize the uniform distribution in our monte carlo simulation. As the value of N increases, the variance decreases and the accuracy of the integration value increases(verified using wolfram alpha).

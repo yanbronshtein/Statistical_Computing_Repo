@@ -1,0 +1,157 @@
+---
+title: "Statistical Models and Computing"
+author: "Yaniv Bronshtein"
+date: "3/1/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+**Import the necessary libraries**
+```{r}
+library(MASS)
+library(pid)
+library(hnp)
+
+```
+
+# Problem 1. 
+We want to test the effect of light level and amount of water on the yield of tomato plants. Each potted plant receives one of three levels of light (1 = 5 hours, 2 = 10 hours, 3 = 15 hours) and one of two levels of water (1 = 1 quart, 2 = 2 quarts). The yield, in pounds, is recorded. The results are as follows:
+**Read in the data**
+```{r}
+path1 <- '/Users/yanivbronshtein/Coding/Rutgers/Statistical_Computing_Repo/data/hw2_q1_data.txt'
+q1_df <- read.table(path1,header=TRUE)
+lm_fit <- lm(Yield~., data=q1_df)
+```
+
+**Now let us print the summary object**
+```{r}
+summary(lm_fit)
+```
+*Light is and Water are both significant factors in determining yield because the p-value is less than 0.05*
+*This supports the hypothesis that increasing light exposure and water exposure will lead to higher yield*
+# Problem 2
+The following data responses y are generated from a regular Poisson model with a single covariate variable x.
+
+(a). Please write down the Poisson model for this data set, stating all requirements.
+```{r}
+path2 <- '/Users/yanivbronshtein/Coding/Rutgers/Statistical_Computing_Repo/data/hw2_q2_data.txt'
+q2_df <- read.table(path2, header=TRUE)
+```
+
+**Plot the data**
+```{r}
+plot(x=q2_df$y, y=q2_df$x, xlab='x', ylab='y')
+```
+
+(c).
+
+```{r}
+get_dev_res <- function(y, mu){
+  return(sign(y - mu) * sqrt(2 * y * log(y/mu) - (y-mu)))
+}
+
+get_dev_res(1, 0.37)
+```
+
+
+
+# Problem 3
+Knight & Skagen collected the data shown in the table( and in data frame eagles) during a field study on the foraging behavior of wintering Bald Eagles in Washington State, USA. The data concern 160 attempts by one (pirating) Bald Eagle to steal a chum salmon from another (feeding) Bald Eagle. The abbreviations used are L=Large, S = small A = adult I = immature
+Report on factors that explain the success of the pirating attempt and give a prediction formula for the probability of success
+```{r}
+q3_df <- eagles
+eagles_glm <- glm(y/n ~ P*A + V, 
+                  data=q3_df,
+                  family=binomial(link='logit'),
+                  weights=n)
+
+summary(eagles_glm)
+
+```
+*Based on the summary object, at 0.1% significance code, the pirating eagle will have a higher success rate*
+*against a small sized feeding eagle(VS) which is why the coefficient in front of this term is the highest in magnitude and positive.*
+*Conversely, we see that at 1% significance code, if the pirating eagle is small, its success rate will decrease, explaining why*
+*the coefficient in front of (PS) is large in magnitude and negative.*
+*Finally, we see that the age of the pirating Eagle on its own is neither a significant contributor nor detractor. However, at the 5% significance code, when the pirating eagle is both immature and small, the effect of (AI) has an even greater adverse affect on the success rate then (PS) alone.*
+
+
+
+# Problem 4. 
+A marketing research firm was engaged by an automobile manufacturer to conduct a pilot study to examine the feasibility of using logistic regression for ascertaining the likelihood that a family will purchase a new car during the next year. 
+A random sample of 33 suburban families was selected. 
+Data on annual family income (X1, in thousand dollars) and the current age of the oldest family automobile (X2, in years) were obtained. 
+A follow-up interview conducted 12 months later was used to determine whether the family actually purchased a new car (Y = 1) or did not purchase a new car (Y = 0) during the year.
+
+**Read in Problem 4 data**
+```{r}
+q4_df <- read.table('/Users/yanivbronshtein/Coding/Rutgers/Statistical_Computing_Repo/data/Stat567_hw2_problem4.txt', header=FALSE)
+colnames(q4_df) <- c('Y', 'X1', 'X2')
+```
+
+(a) Find the maximum likelihood estimates of $\beta_0, \beta_1, and\beta_2$. State the fitted response function.
+
+```{r}
+q4_glm <- glm(Y~., data=q4_df, family=binomial('logit'))
+mle_estim <- q4_glm$coefficients
+
+b0 <- mle_estim[[1]]; b1 <- mle_estim[[2]]; b2 <- mle_estim[[3]]
+cat("Beta 0:", b0, " Beta 1:",b1, " Beta 2:", b2)
+```
+**Response Function**
+
+1/(1+exp(-(b0+(b1*50)+(b2*3))))
+```{r}
+response_function <- function(B,X){
+  temp <- exp(B[1] + B[2]*X[1] + B[3]*X[2])
+
+  return(as.numeric(temp/(1+temp)))
+}
+
+```
+
+b) Obtain exp($\beta_1$) and exp($\beta_2$) and interpret these numbers.
+
+```{r}
+cat("exp(Beta 1):", exp(b1),"\n", "exp(Beta 2):", exp(b2))
+```
+*Taking the exponential of our logit function gives us an understanding of our independent*
+*variables on the odds ratio. In our case exp(Beta 2) is almost twice as likely to occur as* *opposed to not occur. Thus, the age of the car has a higher impact on the likelihood of a sale* *than the income of the potential buyer.*
+
+(c) What is the estimated probability that a family with annual income of $50 thousand and an oldest car of 3 years will purchase a new car next year?
+
+```{r}
+prob <- response_function(B=c(b0,b1,b2), X=c(50.0,3.0))
+prob
+```
+(d) Obtain the deviance residuals and present them in an index plot. Do there appear to be any outlying cases?
+
+```{r}
+dev <- resid(q4_glm, type="deviance") 
+dev <- unname(dev)
+plot(dev,ylab="Deviance Residuals",main="Index Plot of Deviance Residuals")
+```
+(e) Construct a half-normal probability plot of the absolute deviance residuals. Do any cases here appear to be outlying?
+```{r}
+hnp(q4_glm,xlab="Percentile",main="Absolute Value of Deviance Residuals")
+
+
+```
+```{r}
+K <- function(elem){
+  val <- ((0.05-elem)/.22)
+  cat("K(",val,")","\n")
+  if(abs(val) < 1){
+    return(1/2)
+  }
+  return(0)
+}
+
+arr <- c(-1.43,-.95,-.19,.02,.14,.83,1.35,1.46, 2.62)
+res <- 0
+for(elem in arr){
+  res = res + K(elem)
+}
+cat("result", ((1/(9*.22))*res))
+```
